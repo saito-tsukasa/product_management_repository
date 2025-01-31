@@ -38,7 +38,7 @@ jobs:
 
       - name: Check if release is from an allowed branch
         run: |
-          ALLOWED_BRANCH="main"  # 許可するブランチを指定
+          ALLOWED_BRANCH="release"
           RELEASE_BRANCH=${{ github.event.release.target_commitish }}
 
           if [ "$RELEASE_BRANCH" != "$ALLOWED_BRANCH" ]; then
