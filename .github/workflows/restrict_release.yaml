@@ -1,25 +1,25 @@
-# name: Restrict Releases to Specific Branch
+name: Restrict Releases to Specific Branch
 
-# on:
-#   release:
-#     types: [created]
+on:
+  release:
+    types: [created]
 
-# jobs:
-#   check_release_branch:
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Get Release Information
-#         run: echo "Release created from commit ${{ github.event.release.target_commitish }}"
+jobs:
+  check_release_branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Release Information
+        run: echo "Release created from commit ${{ github.event.release.target_commitish }}"
 
-#       - name: Check if release is from the allowed branch
-#         run: |
-#           ALLOWED_BRANCH="release"
-#           RELEASE_BRANCH=${{ github.event.release.target_commitish }}
+      - name: Check if release is from the allowed branch
+        run: |
+          ALLOWED_BRANCH="release"
+          RELEASE_BRANCH=${{ github.event.release.target_commitish }}
 
-#           if [ "$RELEASE_BRANCH" != "$ALLOWED_BRANCH" ]; then
-#             echo "❌ Releases are only allowed from the '$ALLOWED_BRANCH' branch."
-#             exit 1
-#           fi
+          if [ "$RELEASE_BRANCH" != "$ALLOWED_BRANCH" ]; then
+            echo "❌ Releases are only allowed from the '$ALLOWED_BRANCH' branch."
+            exit 1
+          fi
 
 
 # name: Restrict Releases to "release" Branch
