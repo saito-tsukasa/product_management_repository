@@ -23,7 +23,6 @@
 
 
 
-
 name: Restrict Releases to "release" Branch
 
 on:
