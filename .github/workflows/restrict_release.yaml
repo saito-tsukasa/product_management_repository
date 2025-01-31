@@ -1,3 +1,6 @@
+env:
+  ALLOWED_BRANCH: "release"
+  
 name: Restrict Releases to Specific Branch
 
 on:
@@ -13,7 +16,7 @@ jobs:
 
       - name: Check if release is from the allowed branch
         run: |
-          ALLOWED_BRANCH="release"
+          # ALLOWED_BRANCH="release"
           RELEASE_BRANCH=${{ github.event.release.target_commitish }}
 
           if [ "$RELEASE_BRANCH" != "$ALLOWED_BRANCH" ]; then
