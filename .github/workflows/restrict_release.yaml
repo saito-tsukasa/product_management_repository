@@ -23,7 +23,7 @@
 
 
 
-name: Restrict Releases to Specific Branch
+name: Restrict Releases to "release" Branch
 
 on:
   release:
@@ -36,9 +36,9 @@ jobs:
       - name: Get Release Information
         run: echo "Release created from commit ${{ github.event.release.target_commitish }}"
 
-      - name: Check if release is from an allowed branch
+      - name: Check if release is from the 'release' branch
         run: |
-          ALLOWED_BRANCH="release"
+          ALLOWED_BRANCH="release"  # 許可するブランチ
           RELEASE_BRANCH=${{ github.event.release.target_commitish }}
 
           if [ "$RELEASE_BRANCH" != "$ALLOWED_BRANCH" ]; then
@@ -48,7 +48,7 @@ jobs:
 
   delete_unauthorized_release:
     needs: check_release_branch
-    if: failure()  # 許可されていないブランチの場合のみ実行
+    if: failure()  # "release" 以外のブランチなら削除処理を実行
     runs-on: ubuntu-latest
     steps:
       - name: Delete Unauthorized Release
