@@ -60,7 +60,7 @@ jobs:
             exit 1
           fi
 
-          echo "${{ github.ref }}"
+          echo "${{ github.ref }}  ${{ github.ref_name }}"
 
 
 
