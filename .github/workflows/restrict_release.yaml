@@ -1,8 +1,8 @@
+name: Restrict Releases to "release" Branch
+
 env:
   ALLOWED_BRANCH: "release"
   
-name: Restrict Releases to Specific Branch
-
 on:
   release:
     types: [created]
