@@ -9,17 +9,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4  # 最新バージョンを指定
+        with:
+          fetch-depth: 0  # すべての履歴を取得
+          
       - name: Check if branch was created from source_code_god
         run: |
-          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [ "$BASE_BRANCH" == "source_code_god" ]; then
+          NEW_BRANCH="${GITHUB_REF#refs/heads/}"
+          BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/source_code_god || echo "none")
+          if [ "$BASE_BRANCH" == "$(git rev-parse origin/source_code_god)" ]; then
             echo "ERROR: New branches cannot be created from 'source_code_god'."
-            exit 1
-          fi
-      - name: Check if branch was created from release
-        run: |
-          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [ "$BASE_BRANCH" == "release" ]; then
-            echo "ERROR: New branches cannot be created from 'release'."
             exit 1
           fi
