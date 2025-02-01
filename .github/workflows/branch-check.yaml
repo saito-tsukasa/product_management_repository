@@ -1,0 +1,19 @@
+name: Prevent Branch Creation from Main
+on:
+  create:
+    branches:
+      - '*'
+jobs:
+  check-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if branch was created from main
+        run: |
+          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          if [ "$BASE_BRANCH" == "source_code_god" ]; then
+            echo "ERROR: New branches cannot be created from 'source_code_god'."
+            exit 1
+          if [ "$BASE_BRANCH" == "release" ]; then
+            echo "ERROR: New branches cannot be created from 'release'."
+            exit 1
+          fi
