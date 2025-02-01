@@ -15,18 +15,25 @@ jobs:
       - name: Check if branch was created from restricted branches
         run: |
           NEW_BRANCH="${GITHUB_REF#refs/heads/}"
-          
+
+          # 直前のコミットの親（新規ブランチの元ブランチ）を取得
+          PARENT_COMMIT=$(git log --pretty=format:"%H" -n 1 $NEW_BRANCH^ 2>/dev/null || echo "")
+
+          if [ -z "$PARENT_COMMIT" ]; then
+            echo "No parent commit found. This may be a new branch without history."
+            exit 0
+          fi
+
           # ブロック対象のブランチリスト
           BLOCKED_BRANCHES=("release" "source_code_god")
 
-          # 新規ブランチの元ブランチを推測
           for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
-            BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/$BLOCKED || echo "none")
+            BLOCKED_COMMIT=$(git rev-parse origin/$BLOCKED 2>/dev/null || echo "")
 
-            if [ "$BASE_BRANCH" == "$(git rev-parse origin/$BLOCKED)" ]; then
+            if [ "$PARENT_COMMIT" == "$BLOCKED_COMMIT" ]; then
               echo "ERROR: New branches cannot be created from '$BLOCKED'."
               exit 1
             fi
           done
-          
+
           echo "✅ This branch creation is allowed."
