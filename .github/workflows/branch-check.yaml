@@ -70,45 +70,52 @@ on:
   create:
     branches:
       - '**'  # すべてのブランチ作成を監視
-
 jobs:
   check-branch-creation:
     runs-on: ubuntu-latest
     steps:
-      - name: Get Source Branch
+      - name: Debug API Response
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO=${{ github.repository }}
           NEW_BRANCH=${{ github.ref_name }}
 
-          # 新しく作成されたブランチの最新コミットを取得
-          LATEST_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          echo "🔍 調査対象ブランチ: $NEW_BRANCH"
+
+          # 最新コミットのSHA取得
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/git/refs/heads/$NEW_BRANCH" | jq -r '.object.sha')
+            "https://api.github.com/repos/$REPO/git/refs/heads/$NEW_BRANCH")
 
-          echo "New branch: $NEW_BRANCH"
-          echo "Latest commit SHA: $LATEST_COMMIT_SHA"
+          echo "GitHub API Response for branch:"
+          echo "$RESPONSE"
 
-          # 最新コミットの親コミットを取得
-          PARENT_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$LATEST_COMMIT_SHA" | jq -r '.parents[0].sha')
+          LATEST_COMMIT_SHA=$(echo "$RESPONSE" | jq -r '.object.sha')
 
-          echo "Parent commit SHA: $PARENT_COMMIT_SHA"
-
-          # すべてのブランチを取得し、作成元ブランチを特定
-          SOURCE_BRANCH=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/branches" | jq -r --arg PARENT "$PARENT_COMMIT_SHA" \
-            '.[] | select(.commit.sha == $PARENT) | .name')
-
-          if [ -z "$SOURCE_BRANCH" ]; then
-            echo "⚠️ 作成元ブランチが特定できませんでした。"
-          else
-            echo "✅ 作成元ブランチ: $SOURCE_BRANCH"
-            echo "SOURCE_BRANCH=$SOURCE_BRANCH" >> $GITHUB_ENV
+          if [ -z "$LATEST_COMMIT_SHA" ] || [ "$LATEST_COMMIT_SHA" == "null" ]; then
+            echo "❌ 最新コミット SHA が取得できませんでした。"
+            exit 1
           fi
+
+          echo "✅ 最新コミット SHA: $LATEST_COMMIT_SHA"
+
+          # 親コミットを取得
+          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/commits/$LATEST_COMMIT_SHA")
+
+          echo "GitHub API Response for commit:"
+          echo "$RESPONSE"
+
+          PARENT_COMMIT_SHA=$(echo "$RESPONSE" | jq -r '.parents[0].sha')
+
+          if [ -z "$PARENT_COMMIT_SHA" ] || [ "$PARENT_COMMIT_SHA" == "null" ]; then
+            echo "⚠️ 作成元ブランチが特定できませんでした。"
+            exit 1
+          fi
+
+          echo "✅ 親コミット SHA: $PARENT_COMMIT_SHA"
 
 
 
