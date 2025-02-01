@@ -64,58 +64,65 @@
 
 
 
+
 name: Restrict Branch Creation
 
 on:
   create:
     branches:
-      - '**'  # すべてのブランチ作成を監視
+      - '**'  # すべての新規ブランチ作成を監視
+
 jobs:
   check-branch-creation:
     runs-on: ubuntu-latest
     steps:
-      - name: Debug API Response
+      - name: Get Source Branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPO=${{ github.repository }}
           NEW_BRANCH=${{ github.ref_name }}
 
-          echo "🔍 調査対象ブランチ: $NEW_BRANCH"
+          echo "📌 新規ブランチ: $NEW_BRANCH"
 
-          # 最新コミットのSHA取得
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          # 最新コミットの SHA を取得
+          LATEST_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/git/refs/heads/$NEW_BRANCH")
+            "https://api.github.com/repos/$REPO/git/refs/heads/$NEW_BRANCH" | jq -r '.object.sha')
 
-          echo "GitHub API Response for branch:"
-          echo "$RESPONSE"
+          echo "🔍 最新コミット SHA: $LATEST_COMMIT_SHA"
 
-          LATEST_COMMIT_SHA=$(echo "$RESPONSE" | jq -r '.object.sha')
-
-          if [ -z "$LATEST_COMMIT_SHA" ] || [ "$LATEST_COMMIT_SHA" == "null" ]; then
-            echo "❌ 最新コミット SHA が取得できませんでした。"
-            exit 1
-          fi
-
-          echo "✅ 最新コミット SHA: $LATEST_COMMIT_SHA"
-
-          # 親コミットを取得
-          RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          # 親コミットの SHA を取得
+          PARENT_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/$REPO/commits/$LATEST_COMMIT_SHA")
+            "https://api.github.com/repos/$REPO/commits/$LATEST_COMMIT_SHA" | jq -r '.parents[0].sha')
 
-          echo "GitHub API Response for commit:"
-          echo "$RESPONSE"
+          echo "📝 親コミット SHA: $PARENT_COMMIT_SHA"
 
-          PARENT_COMMIT_SHA=$(echo "$RESPONSE" | jq -r '.parents[0].sha')
+          # 親コミットが属するブランチ（作成元ブランチ）を取得
+          SOURCE_BRANCH=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/branches" | jq -r --arg PARENT "$PARENT_COMMIT_SHA" \
+            '.[] | select(.commit.sha == $PARENT) | .name')
 
-          if [ -z "$PARENT_COMMIT_SHA" ] || [ "$PARENT_COMMIT_SHA" == "null" ]; then
+          if [ -z "$SOURCE_BRANCH" ]; then
             echo "⚠️ 作成元ブランチが特定できませんでした。"
             exit 1
           fi
 
-          echo "✅ 親コミット SHA: $PARENT_COMMIT_SHA"
+          echo "✅ 作成元ブランチ: $SOURCE_BRANCH"
+
+          # 制限したいブランチのリスト
+          BLOCKED_BRANCHES=("release" "source_code_god")
+
+          for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
+            if [ "$SOURCE_BRANCH" == "$BLOCKED" ]; then
+              echo "🚫 エラー: '$SOURCE_BRANCH' から新しいブランチを作成することは禁止されています。"
+              exit 1
+            fi
+          done
+
+          echo "✅ ブランチ作成は許可されました。"
 
 
 
