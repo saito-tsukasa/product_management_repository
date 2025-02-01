@@ -1,4 +1,4 @@
-name: Prevent Branch Creation from Main
+name: Prevent Branch Creation from "source_code_god" and "release"
 on:
   create:
     branches:
@@ -18,5 +18,14 @@ jobs:
           BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/source_code_god || echo "none")
           if [ "$BASE_BRANCH" == "$(git rev-parse origin/source_code_god)" ]; then
             echo "ERROR: New branches cannot be created from 'source_code_god'."
+            exit 1
+          fi
+
+      - name: Check if branch was created from release
+        run: |
+          NEW_BRANCH="${GITHUB_REF#refs/heads/}"
+          BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/release || echo "none")
+          if [ "$BASE_BRANCH" == "$(git rev-parse origin/release)" ]; then
+            echo "ERROR: New branches cannot be created from 'release'."
             exit 1
           fi
