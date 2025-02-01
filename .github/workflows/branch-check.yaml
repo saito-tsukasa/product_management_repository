@@ -1,4 +1,4 @@
-name: Prevent Branch Creation from "source_code_god" and "release"
+name: Prevent Branch Creation from "release" and "source_code_god"
 on:
   create:
     branches:
@@ -8,24 +8,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4  # 最新バージョンを指定
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0  # すべての履歴を取得
-          
-      - name: Check if branch was created from source_code_god
+
+      - name: Check if branch was created from restricted branches
         run: |
           NEW_BRANCH="${GITHUB_REF#refs/heads/}"
-          BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/source_code_god || echo "none")
-          if [ "$BASE_BRANCH" == "$(git rev-parse origin/source_code_god)" ]; then
-            echo "❌ New branches cannot be created from 'source_code_god'."
-            exit 1
+
+          # 直前のコミットの親（新規ブランチの元ブランチ）を取得
+          PARENT_COMMIT=$(git log --pretty=format:"%H" -n 1 $NEW_BRANCH^ 2>/dev/null || echo "")
+
+          if [ -z "$PARENT_COMMIT" ]; then
+            echo "No parent commit found. This may be a new branch without history."
+            exit 0
           fi
 
-      - name: Check if branch was created from release
-        run: |
-          NEW_BRANCH="${GITHUB_REF#refs/heads/}"
-          BASE_BRANCH=$(git merge-base $NEW_BRANCH origin/release || echo "none")
-          if [ "$BASE_BRANCH" == "$(git rev-parse origin/release)" ]; then
-            echo "❌ New branches cannot be created from 'release'."
-            exit 1
-          fi
+          # ブロック対象のブランチリスト
+          BLOCKED_BRANCHES=("release" "source_code_god")
+
+          for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
+            BLOCKED_COMMIT=$(git rev-parse origin/$BLOCKED 2>/dev/null || echo "")
+
+            if [ "$PARENT_COMMIT" == "$BLOCKED_COMMIT" ]; then
+              echo "❌ New branches cannot be created from '$BLOCKED'."
+              exit 1
+            fi
+          done
+
+          echo "✅ This branch creation is allowed."
