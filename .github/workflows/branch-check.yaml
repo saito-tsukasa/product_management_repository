@@ -16,21 +16,17 @@ jobs:
         run: |
           NEW_BRANCH="${GITHUB_REF#refs/heads/}"
 
-          # 直前のコミットの親（新規ブランチの元ブランチ）を取得
-          PARENT_COMMIT=$(git log --pretty=format:"%H" -n 1 $NEW_BRANCH^ 2>/dev/null || echo "")
-
-          if [ -z "$PARENT_COMMIT" ]; then
-            echo "No parent commit found. This may be a new branch without history."
-            exit 0
-          fi
-
           # ブロック対象のブランチリスト
           BLOCKED_BRANCHES=("release" "source_code_god")
 
+          # 各ブロック対象のブランチと、新規ブランチの共通の祖先を取得
           for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
+            COMMON_ANCESTOR=$(git merge-base $NEW_BRANCH origin/$BLOCKED || echo "")
+
+            # 共通の祖先がブロック対象ブランチの最新コミットと一致するか確認
             BLOCKED_COMMIT=$(git rev-parse origin/$BLOCKED 2>/dev/null || echo "")
 
-            if [ "$PARENT_COMMIT" == "$BLOCKED_COMMIT" ]; then
+            if [ "$COMMON_ANCESTOR" == "$BLOCKED_COMMIT" ]; then
               echo "❌ New branches cannot be created from '$BLOCKED'."
               exit 1
             fi
