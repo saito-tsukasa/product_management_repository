@@ -34,7 +34,7 @@ d: optional, リリース先ごと特殊な対応をした場合など。 （グ
 
 ## 運用フロー概要図
 
-<img src="./images/operation_flow.jpg" width="75%">
+<img src="./images/operation_flow.jpg" width="100%">
 
 
 # リリースノート
