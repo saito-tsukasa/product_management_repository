@@ -37,6 +37,33 @@
 
 
 
+# name: Restrict Branch Creation
+
+# on:
+#   create:
+#     branches:
+#       - '**'  # すべてのブランチ作成を監視
+
+# jobs:
+#   check-branch-creation:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Check if branch is created from restricted branches
+#         run: |
+#           BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+#             -H "Accept: application/vnd.github.v3+json" \
+#             "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/${{ github.ref_name }}" \
+#             | jq -r '.object.sha')
+
+#           if [ "${{ github.ref }}" == "refs/heads/release" ] || [ "${{ github.ref }}" == "refs/heads/source_code_god" ]; then
+#             echo "❌ 新しいブランチを 'release' または 'source_code_god' から作成することは禁止されています。"
+#             exit 1
+#           fi
+
+#           echo "${{ github.ref }}  ${{ github.ref_name }}"
+
+
+
 name: Restrict Branch Creation
 
 on:
@@ -48,19 +75,41 @@ jobs:
   check-branch-creation:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if branch is created from restricted branches
+      - name: Get Source Branch
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          BASE_BRANCH=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            "https://api.github.com/repos/${{ github.repository }}/git/refs/heads/${{ github.ref_name }}" \
-            | jq -r '.object.sha')
+          REPO=${{ github.repository }}
+          NEW_BRANCH=${{ github.ref_name }}
 
-          if [ "${{ github.ref }}" == "refs/heads/release" ] || [ "${{ github.ref }}" == "refs/heads/source_code_god" ]; then
-            echo "❌ 新しいブランチを 'release' または 'source_code_god' から作成することは禁止されています。"
-            exit 1
+          # 新しく作成されたブランチの最新コミットを取得
+          LATEST_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/git/refs/heads/$NEW_BRANCH" | jq -r '.object.sha')
+
+          echo "New branch: $NEW_BRANCH"
+          echo "Latest commit SHA: $LATEST_COMMIT_SHA"
+
+          # 最新コミットの親コミットを取得
+          PARENT_COMMIT_SHA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/commits/$LATEST_COMMIT_SHA" | jq -r '.parents[0].sha')
+
+          echo "Parent commit SHA: $PARENT_COMMIT_SHA"
+
+          # すべてのブランチを取得し、作成元ブランチを特定
+          SOURCE_BRANCH=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO/branches" | jq -r --arg PARENT "$PARENT_COMMIT_SHA" \
+            '.[] | select(.commit.sha == $PARENT) | .name')
+
+          if [ -z "$SOURCE_BRANCH" ]; then
+            echo "⚠️ 作成元ブランチが特定できませんでした。"
+          else
+            echo "✅ 作成元ブランチ: $SOURCE_BRANCH"
+            echo "SOURCE_BRANCH=$SOURCE_BRANCH" >> $GITHUB_ENV
           fi
 
-          echo "${{ github.ref }}  ${{ github.ref_name }}"
 
 
 
