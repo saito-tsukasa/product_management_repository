@@ -1,3 +1,42 @@
+# name: Prevent Branch Creation from "release" and "source_code_god"
+# on:
+#   create:
+#     branches:
+#       - '*'
+# jobs:
+#   check-source:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0  # すべての履歴を取得
+
+#       - name: Check if branch was created from restricted branches
+#         run: |
+#           NEW_BRANCH="${GITHUB_REF#refs/heads/}"
+
+#           # ブロック対象のブランチリスト
+#           BLOCKED_BRANCHES=("release" "source_code_god")
+
+#           # 各ブロック対象のブランチと、新規ブランチの共通の祖先を取得
+#           for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
+#             COMMON_ANCESTOR=$(git merge-base $NEW_BRANCH origin/$BLOCKED || echo "")
+
+#             # 共通の祖先がブロック対象ブランチの最新コミットと一致するか確認
+#             BLOCKED_COMMIT=$(git rev-parse origin/$BLOCKED 2>/dev/null || echo "")
+
+#             if [ "$COMMON_ANCESTOR" == "$BLOCKED_COMMIT" ]; then
+#               echo "❌ New branches cannot be created from '$BLOCKED'."
+#               exit 1
+#             fi
+#           done
+
+#           echo "✅ This branch creation is allowed."
+
+
+
+
 name: Prevent Branch Creation from "release" and "source_code_god"
 on:
   create:
@@ -12,21 +51,25 @@ jobs:
         with:
           fetch-depth: 0  # すべての履歴を取得
 
-      - name: Check if branch was created from restricted branches
+      - name: Find the base branch of the new branch
         run: |
           NEW_BRANCH="${GITHUB_REF#refs/heads/}"
-
+          
           # ブロック対象のブランチリスト
           BLOCKED_BRANCHES=("release" "source_code_god")
 
-          # 各ブロック対象のブランチと、新規ブランチの共通の祖先を取得
+          # 新規ブランチの最初のコミットの親を取得（直接の元ブランチを推測）
+          PARENT_BRANCH=$(git for-each-ref --format='%(refname:short) %(objectname)' refs/remotes/origin | \
+                          grep $(git rev-parse origin/$NEW_BRANCH^) | awk '{print $1}' || echo "")
+
+          if [ -z "$PARENT_BRANCH" ]; then
+            echo "No valid parent branch found. Skipping check."
+            exit 0
+          fi
+
+          # 親ブランチがブロック対象ならエラー
           for BLOCKED in "${BLOCKED_BRANCHES[@]}"; do
-            COMMON_ANCESTOR=$(git merge-base $NEW_BRANCH origin/$BLOCKED || echo "")
-
-            # 共通の祖先がブロック対象ブランチの最新コミットと一致するか確認
-            BLOCKED_COMMIT=$(git rev-parse origin/$BLOCKED 2>/dev/null || echo "")
-
-            if [ "$COMMON_ANCESTOR" == "$BLOCKED_COMMIT" ]; then
+            if [ "$PARENT_BRANCH" == "origin/$BLOCKED" ]; then
               echo "❌ New branches cannot be created from '$BLOCKED'."
               exit 1
             fi
