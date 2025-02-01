@@ -7,6 +7,8 @@ jobs:
   check-source:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4  # 最新バージョンを指定
       - name: Check if branch was created from source_code_god
         run: |
           BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
