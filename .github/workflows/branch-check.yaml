@@ -60,6 +60,10 @@ jobs:
             exit 1
           fi
 
+          done
+
+          echo "${{ github.ref }}"
+
 
 
 
