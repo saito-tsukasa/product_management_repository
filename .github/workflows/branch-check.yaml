@@ -7,12 +7,16 @@ jobs:
   check-source:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if branch was created from main
+      - name: Check if branch was created from source_code_god
         run: |
           BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
           if [ "$BASE_BRANCH" == "source_code_god" ]; then
             echo "ERROR: New branches cannot be created from 'source_code_god'."
             exit 1
+          fi
+      - name: Check if branch was created from release
+        run: |
+          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
           if [ "$BASE_BRANCH" == "release" ]; then
             echo "ERROR: New branches cannot be created from 'release'."
             exit 1
